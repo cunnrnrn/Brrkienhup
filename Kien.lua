@@ -317,8 +317,3 @@ createButton(tab2, "Fix Lag Nâng Cao (Bật/Tắt)", function()
         print("Đã tắt Fix Lag.")
     end
 end)
-
-    else
-        print("Đã tắt chế độ Fix Lag.")
-    end
-end)
