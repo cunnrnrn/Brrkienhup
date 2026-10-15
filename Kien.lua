@@ -1,5 +1,5 @@
 -- ==========================================
--- SCRIPT: √12kientomato Hub Pro Max (Ultra Smooth)
+-- SCRIPT: √12kientomato Hub Pro Max (Full Noclip UI)
 -- ==========================================
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -22,23 +22,23 @@ end)
 local base1 = nil
 local base2 = nil
 local isFlying = false
-local noclipEnabled = true -- Mặc định bật noclip khi bay để cực kỳ mượt
 local flySpeed = 165
 local fixLagActive = false
+local noclipManual = false -- Bật/tắt Noclip thủ công
 local currentTween = nil
 
--- Tự động nhặt đồ tức thì (Instant Pick Up - Không chờ vòng tròn quay)
+-- Tự động nhặt đồ tức thì (Instant Pick Up - Bấm ăn ngay, không giữ vòng tròn)
 ProximityPromptService.PromptButtonHoldBegan:Connect(function(prompt)
     fireproximityprompt(prompt)
 end)
 
--- Tạo GUI (Nhỏ gọn, Kéo thả mượt)
+-- Tạo GUI (Tối ưu giao diện nhỏ gọn, kéo thả linh hoạt)
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "√12kientomato_Gui"
 ScreenGui.Parent = CoreGui
 ScreenGui.ResetOnSpawn = false
 
--- Nút bật/tắt menu
+-- Nút Bật/Tắt Menu
 local ToggleBtn = Instance.new("TextButton")
 ToggleBtn.Name = "ToggleBtn"
 ToggleBtn.Parent = ScreenGui
@@ -56,7 +56,7 @@ local UICornerBtn = Instance.new("UICorner")
 UICornerBtn.CornerRadius = UDim.new(0, 6)
 UICornerBtn.Parent = ToggleBtn
 
--- Frame chính
+-- Bảng điều khiển chính
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
 MainFrame.Parent = ScreenGui
@@ -83,7 +83,7 @@ Title.TextColor3 = Color3.fromRGB(255, 255, 255)
 Title.TextSize = 14
 Title.TextXAlignment = Enum.TextXAlignment.Left
 
--- Hiển thị FPS trên Menu
+-- Bảng hiển thị FPS Live
 local FpsLabel = Instance.new("TextLabel")
 FpsLabel.Parent = MainFrame
 FpsLabel.BackgroundTransparency = 1
@@ -95,7 +95,7 @@ FpsLabel.TextColor3 = Color3.fromRGB(0, 255, 150)
 FpsLabel.TextSize = 13
 FpsLabel.TextXAlignment = Enum.TextXAlignment.Right
 
--- Tính FPS
+-- Bộ tính toán FPS
 local lastTime = tick()
 local frameCount = 0
 RunService.RenderStepped:Connect(function()
@@ -111,7 +111,7 @@ ToggleBtn.MouseButton1Click:Connect(function()
     MainFrame.Visible = not MainFrame.Visible
 end)
 
--- Hệ thống Tab
+-- Quản lý Tab
 local TabButtonContainer = Instance.new("Frame")
 TabButtonContainer.Parent = MainFrame
 TabButtonContainer.BackgroundTransparency = 1
@@ -179,7 +179,7 @@ local function createTab(name)
 end
 
 local tab1 = createTab("Tele & Bay")
-local tab2 = createTab("Cài Đặt Lag")
+local tab2 = createTab("Cài Đặt Lag & Phụ")
 
 local function createButton(parent, text, callback)
     local btn = Instance.new("TextButton")
@@ -199,7 +199,7 @@ local function createButton(parent, text, callback)
     return btn
 end
 
--- ================= TAB 1 =================
+-- ================= TAB 1: BAY & TÍNH NĂNG =================
 createButton(tab1, "Lưu Vị Trí Base 1", function()
     if humanoidRootPart then
         base1 = humanoidRootPart.CFrame
@@ -214,7 +214,6 @@ createButton(tab1, "Lưu Vị Trí Base 2", function()
     end
 end)
 
--- Bay siêu mượt theo đúng lộ trình 2 -> 1 -> 2 rồi NGỪNG
 local function smoothFlyTo(targetCFrame)
     if not humanoidRootPart or not targetCFrame or not isFlying then return false end
     local distance = (humanoidRootPart.Position - targetCFrame.Position).Magnitude
@@ -248,19 +247,15 @@ createButton(tab1, "Chạy Bay (2 -> 1 -> 2 Nghỉ)", function()
     isFlying = true
     
     task.spawn(function()
-        -- 1. Bay qua Base 2
         if smoothFlyTo(base2) then
             task.wait(0.1)
-            -- 2. Bay qua Base 1
             if smoothFlyTo(base1) then
                 task.wait(0.1)
-                -- 3. Bay lại Base 2
                 smoothFlyTo(base2)
             end
         end
-        -- Kết thúc hành trình -> Tự động nghỉ bay
         isFlying = false
-        print("Đã hoàn tất hành trình 2 -> 1 -> 2 và nghỉ bay!")
+        print("Đã hoàn tất hành trình 2 -> 1 -> 2 và dừng bay!")
     end)
 end)
 
@@ -275,9 +270,23 @@ createButton(tab1, "NGỪNG BAY NGAY LẬP TỨC", function()
     print("Đã dừng bay ngay lập tức!")
 end)
 
--- Auto Noclip xuyên vật thể trong lúc bay mượt
+-- ================= TAB 2: NOCLIP & FIX LAG =================
+local NoclipBtn = createButton(tab2, "Noclip: TẮT", function() end)
+
+NoclipBtn.MouseButton1Click:Connect(function()
+    noclipManual = not noclipManual
+    if noclipManual then
+        NoclipBtn.Text = "Noclip: BẬT"
+        NoclipBtn.TextColor3 = Color3.fromRGB(0, 255, 150)
+    else
+        NoclipBtn.Text = "Noclip: TẮT"
+        NoclipBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    end
+end)
+
+-- Xử lý Noclip (Xuyên tường khi Bật nút hoặc khi đang Bay)
 RunService.Stepped:Connect(function()
-    if isFlying and player.Character then
+    if (isFlying or noclipManual) and player.Character then
         for _, part in pairs(player.Character:GetDescendants()) do
             if part:IsA("BasePart") then
                 part.CanCollide = false
@@ -286,16 +295,13 @@ RunService.Stepped:Connect(function()
     end
 end)
 
--- ================= TAB 2: FIX LAG NÂNG CAO =================
 createButton(tab2, "Fix Lag Nâng Cao (Bật/Tắt)", function()
     fixLagActive = not fixLagActive
     if fixLagActive then
-        -- Xóa đổ bóng & ánh sáng nặng
         Lighting.GlobalShadows = false
         Lighting.FogEnd = 9e9
         Lighting.Brightness = 1
         
-        -- Tối ưu hóa vật liệu toàn màn chơi
         for _, obj in pairs(Workspace:GetDescendants()) do
             if obj:IsA("BasePart") then
                 obj.Material = Enum.Material.SmoothPlastic
@@ -306,7 +312,12 @@ createButton(tab2, "Fix Lag Nâng Cao (Bật/Tắt)", function()
                 obj.Enabled = false
             end
         end
-        print("Đã bật Fix Lag Nâng Cao!")
+        print("Đã kích hoạt Fix Lag Nâng Cao!")
+    else
+        print("Đã tắt Fix Lag.")
+    end
+end)
+
     else
         print("Đã tắt chế độ Fix Lag.")
     end
