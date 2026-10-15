@@ -1,5 +1,5 @@
 -- ==========================================
--- SCRIPT: √12kientomato Hub Pro Max (Full Noclip UI)
+-- SCRIPT: √12kientomato Hub Pro Max (Direct Exec)
 -- ==========================================
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -12,7 +12,7 @@ local ProximityPromptService = game:GetService("ProximityPromptService")
 local player = Players.LocalPlayer
 local character = player.Character or player.CharacterAdded:Wait()
 local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
-f
+
 player.CharacterAdded:Connect(function(newChar)
     character = newChar
     humanoidRootPart = character:WaitForChild("HumanoidRootPart")
@@ -24,15 +24,15 @@ local base2 = nil
 local isFlying = false
 local flySpeed = 165
 local fixLagActive = false
-local noclipManual = false -- Bật/tắt Noclip thủ công
+local noclipManual = false
 local currentTween = nil
 
--- Tự động nhặt đồ tức thì (Instant Pick Up - Bấm ăn ngay, không giữ vòng tròn)
+-- Tự động nhặt đồ tức thì
 ProximityPromptService.PromptButtonHoldBegan:Connect(function(prompt)
     fireproximityprompt(prompt)
 end)
 
--- Tạo GUI (Tối ưu giao diện nhỏ gọn, kéo thả linh hoạt)
+-- Tạo GUI
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "√12kientomato_Gui"
 ScreenGui.Parent = CoreGui
@@ -95,7 +95,6 @@ FpsLabel.TextColor3 = Color3.fromRGB(0, 255, 150)
 FpsLabel.TextSize = 13
 FpsLabel.TextXAlignment = Enum.TextXAlignment.Right
 
--- Bộ tính toán FPS
 local lastTime = tick()
 local frameCount = 0
 RunService.RenderStepped:Connect(function()
@@ -179,7 +178,7 @@ local function createTab(name)
 end
 
 local tab1 = createTab("Tele & Bay")
-local tab2 = createTab("Cài Đặt Lag & Phụ")
+local tab2 = createTab("Cài Đặt & Phụ")
 
 local function createButton(parent, text, callback)
     local btn = Instance.new("TextButton")
@@ -199,7 +198,7 @@ local function createButton(parent, text, callback)
     return btn
 end
 
--- ================= TAB 1: BAY & TÍNH NĂNG =================
+-- ================= TAB 1 =================
 createButton(tab1, "Lưu Vị Trí Base 1", function()
     if humanoidRootPart then
         base1 = humanoidRootPart.CFrame
@@ -270,7 +269,7 @@ createButton(tab1, "NGỪNG BAY NGAY LẬP TỨC", function()
     print("Đã dừng bay ngay lập tức!")
 end)
 
--- ================= TAB 2: NOCLIP & FIX LAG =================
+-- ================= TAB 2 =================
 local NoclipBtn = createButton(tab2, "Noclip: TẮT", function() end)
 
 NoclipBtn.MouseButton1Click:Connect(function()
@@ -284,7 +283,6 @@ NoclipBtn.MouseButton1Click:Connect(function()
     end
 end)
 
--- Xử lý Noclip (Xuyên tường khi Bật nút hoặc khi đang Bay)
 RunService.Stepped:Connect(function()
     if (isFlying or noclipManual) and player.Character then
         for _, part in pairs(player.Character:GetDescendants()) do
