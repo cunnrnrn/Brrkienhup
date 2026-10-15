@@ -1,5 +1,5 @@
 -- ==========================================
--- SCRIPT: √12kientomato Hub Pro Max (Ultra Settings & Fixed Noclip)
+-- SCRIPT: √12kientomato Hub Pro Max (Fixed Noclip & Smooth Fly)
 -- ==========================================
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -8,7 +8,6 @@ local CoreGui = game:GetService("CoreGui")
 local Workspace = game:GetService("Workspace")
 local Lighting = game:GetService("Lighting")
 local ProximityPromptService = game:GetService("ProximityPromptService")
-local UserInputService = game:GetService("UserInputService")
 
 local player = Players.LocalPlayer
 local mouse = player:GetMouse()
@@ -24,13 +23,13 @@ end)
 local base1 = nil
 local base2 = nil
 local isFlying = false
-local flySpeed = 165 -- Tốc độ mặc định tối đa
+local flySpeed = 165
 local fixLagActive = false
 local noclipManual = false
 local clickTpActive = false
 local espPlayerActive = false
 local autoPlatformActive = false
-local currentTween = nil
+local flyConnection = nil
 
 local selectedPosition = nil
 local markerPart = nil
@@ -120,7 +119,7 @@ ToggleBtn.MouseButton1Click:Connect(function()
     MainFrame.Visible = not MainFrame.Visible
 end)
 
--- Tab hệ thống (Chia thành 3 Tab: Tele & Bay, Tính Năng, Cài Đặt)
+-- Tab hệ thống
 local TabButtonContainer = Instance.new("Frame")
 TabButtonContainer.Parent = MainFrame
 TabButtonContainer.BackgroundTransparency = 1
@@ -209,6 +208,53 @@ local function createButton(parent, text, callback)
     return btn
 end
 
+-- ================= HÀM BAY SIÊU MƯỢT KHÔNG BỊ GIẬT NGƯỢC =================
+local function smoothFlyTo(targetCFrame)
+    if not humanoidRootPart or not targetCFrame then return false end
+    isFlying = true
+    
+    -- Tắt trọng lực nhân vật khi bay để không bị kéo sập xuống
+    local humanoid = character:FindFirstChildOfClass("Humanoid")
+    if humanoid then
+        humanoid.PlatformStand = true
+    end
+    
+    local completed = false
+    if flyConnection then flyConnection:Disconnect() end
+    
+    flyConnection = RunService.RenderStepped:Connect(function(dt)
+        if not isFlying or not humanoidRootPart then 
+            if flyConnection then flyConnection:Disconnect() end
+            return 
+        end
+        
+        local currentPos = humanoidRootPart.Position
+        local targetPos = targetCFrame.Position
+        local distance = (currentPos - targetPos).Magnitude
+        
+        if distance < 2 or not isFlying then
+            humanoidRootPart.CFrame = targetCFrame
+            humanoidRootPart.AssemblyLinearVelocity = Vector3.zero
+            completed = true
+            isFlying = false
+            if humanoid then humanoid.PlatformStand = false end
+            if flyConnection then flyConnection:Disconnect() end
+        else
+            -- Dịch chuyển tuyến tính mượt mà tuyệt đối, chống giật ngược
+            local speed = flySpeed
+            local step = math.min(speed * dt, distance)
+            local newPos = currentPos + (targetPos - currentPos).Unit * step
+            humanoidRootPart.CFrame = CFrame.new(newPos, targetPos)
+            humanoidRootPart.AssemblyLinearVelocity = Vector3.zero
+        end
+    end)
+    
+    while isFlying and not completed do
+        task.wait()
+    end
+    return true
+end
+
 -- ================= TAB 1: TELE & BAY =================
 createButton(tab1, "Lưu Vị Trí Base 1", function()
     if humanoidRootPart then
@@ -224,29 +270,6 @@ createButton(tab1, "Lưu Vị Trí Base 2", function()
     end
 end)
 
-local function smoothFlyTo(targetCFrame)
-    if not humanoidRootPart or not targetCFrame or not isFlying then return false end
-    local distance = (humanoidRootPart.Position - targetCFrame.Position).Magnitude
-    local duration = distance / flySpeed
-    
-    local tweenInfo = TweenInfo.new(duration, Enum.EasingStyle.Linear, Enum.EasingDirection.InOut)
-    currentTween = TweenService:Create(humanoidRootPart, tweenInfo, {CFrame = targetCFrame})
-    currentTween:Play()
-    
-    local completed = false
-    local connection
-    connection = currentTween.Completed:Connect(function()
-        completed = true
-        if connection then connection:Disconnect() end
-    end)
-    
-    while not completed and isFlying do
-        task.wait()
-    end
-    
-    return isFlying
-end
-
 createButton(tab1, "Chạy Bay (2 -> 1 -> 2 Nghỉ)", function()
     if not base1 or not base2 then
         print("Vui lòng lưu đủ 2 vị trí Base trước!")
@@ -254,9 +277,9 @@ createButton(tab1, "Chạy Bay (2 -> 1 -> 2 Nghỉ)", function()
     end
     
     if isFlying then return end
-    isFlying = true
     
     task.spawn(function()
+        noclipManual = true -- Tự động bật noclip khi bay cho mượt
         if smoothFlyTo(base2) then
             task.wait(0.1)
             if smoothFlyTo(base1) then
@@ -265,32 +288,30 @@ createButton(tab1, "Chạy Bay (2 -> 1 -> 2 Nghỉ)", function()
             end
         end
         isFlying = false
+        noclipManual = false
         print("Đã hoàn tất hành trình 2 -> 1 -> 2 và dừng bay!")
     end)
 end)
 
 createButton(tab1, "NGỪNG BAY NGAY LẬP TỨC", function()
     isFlying = false
-    if currentTween then
-        currentTween:Cancel()
-    end
+    if flyConnection then flyConnection:Disconnect() end
+    local humanoid = character:FindFirstChildOfClass("Humanoid")
+    if humanoid then humanoid.PlatformStand = false end
     if humanoidRootPart then
-        humanoidRootPart.Velocity = Vector3.zero
+        humanoidRootPart.AssemblyLinearVelocity = Vector3.zero
     end
     print("Đã dừng bay ngay lập tức!")
 end)
 
--- ================= TAB 2: TÍNH NĂNG (CLICK TP, KHỐI THEO CHÂN, ESP) =================
+-- ================= TAB 2: TÍNH NĂNG =================
 local ClickTpBtn = createButton(tab2, "Chọn Điểm: TẮT", function() end)
 
 ClickTpBtn.MouseButton1Click:Connect(function()
     clickTpActive = not clickTpActive
-    if clickTpActive then
-        ClickTpBtn.Text = "Chọn Điểm: BẬT"
-        ClickTpBtn.TextColor3 = Color3.fromRGB(0, 255, 150)
-    else
-        ClickTpBtn.Text = "Chọn Điểm: TẮT"
-        ClickTpBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    ClickTpBtn.Text = clickTpActive and "Chọn Điểm: BẬT" or "Chọn Điểm: TẮT"
+    ClickTpBtn.TextColor3 = clickTpActive and Color3.fromRGB(0, 255, 150) or Color3.fromRGB(255, 255, 255)
+    if not clickTpActive then
         selectedPosition = nil
         if markerPart then markerPart:Destroy() end
     end
@@ -303,7 +324,6 @@ mouse.Button1Down:Connect(function()
     
     if target and target:IsA("BasePart") and hitPos then
         selectedPosition = hitPos + Vector3.new(0, 3, 0)
-        
         if markerPart then markerPart:Destroy() end
         markerPart = Instance.new("Part")
         markerPart.Size = Vector3.new(2, 2, 2)
@@ -322,16 +342,10 @@ createButton(tab2, "✅ NÚT OK (BẤM ĐỂ BAY)", function()
     if not selectedPosition or not humanoidRootPart then return end
     if markerPart then markerPart:Destroy() end
     
-    local distance = (humanoidRootPart.Position - selectedPosition.Position).Magnitude
-    local duration = distance / flySpeed
-    
-    isFlying = true
-    local tweenInfo = TweenInfo.new(duration, Enum.EasingStyle.Linear)
-    currentTween = TweenService:Create(humanoidRootPart, tweenInfo, {CFrame = selectedPosition})
-    currentTween:Play()
-    
-    currentTween.Completed:Connect(function()
-        isFlying = false
+    task.spawn(function()
+        noclipManual = true
+        smoothFlyTo(selectedPosition)
+        noclipManual = false
     end)
 end)
 
@@ -339,15 +353,10 @@ local AutoPlatformBtn = createButton(tab2, "Khối Theo Chân: TẮT", function(
 
 AutoPlatformBtn.MouseButton1Click:Connect(function()
     autoPlatformActive = not autoPlatformActive
-    if autoPlatformActive then
-        AutoPlatformBtn.Text = "Khối Theo Chân: BẬT"
-        AutoPlatformBtn.TextColor3 = Color3.fromRGB(0, 255, 150)
-    else
-        AutoPlatformBtn.Text = "Khối Theo Chân: TẮT"
-        AutoPlatformBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-        for _, p in pairs(activePlatforms) do
-            if p then p:Destroy() end
-        end
+    AutoPlatformBtn.Text = autoPlatformActive and "Khối Theo Chân: BẬT" or "Khối Theo Chân: TẮT"
+    AutoPlatformBtn.TextColor3 = autoPlatformActive and Color3.fromRGB(0, 255, 150) or Color3.fromRGB(255, 255, 255)
+    if not autoPlatformActive then
+        for _, p in pairs(activePlatforms) do if p then p:Destroy() end end
         activePlatforms = {}
     end
 end)
@@ -372,7 +381,6 @@ RunService.Heartbeat:Connect(function()
             plat.Transparency = 1
             plat.Parent = Workspace
             table.insert(activePlatforms, plat)
-            
             if #activePlatforms > 30 then
                 local oldPlat = table.remove(activePlatforms, 1)
                 if oldPlat then oldPlat:Destroy() end
@@ -391,13 +399,11 @@ end)
 
 local function setupPlayerEsp(p)
     if p == player then return end
-    
     local function applyEsp(char)
         if not char then return end
         local hrp = char:WaitForChild("HumanoidRootPart", 5)
         local head = char:WaitForChild("Head", 5)
         if not hrp or not head then return end
-        
         if hrp:FindFirstChild("KienHighlight") then return end
         
         local highlight = Instance.new("Highlight")
@@ -434,21 +440,13 @@ local function setupPlayerEsp(p)
             end
         end)
     end
-    
     p.CharacterAdded:Connect(function(newChar)
-        if espPlayerActive then
-            applyEsp(newChar)
-        end
+        if espPlayerActive then applyEsp(newChar) end
     end)
-    
-    if p.Character then
-        applyEsp(p.Character)
-    end
+    if p.Character then applyEsp(p.Character) end
 end
 
-for _, p in pairs(Players:GetPlayers()) do
-    setupPlayerEsp(p)
-end
+for _, p in pairs(Players:GetPlayers()) do setupPlayerEsp(p) end
 Players.PlayerAdded:Connect(setupPlayerEsp)
 
 RunService.RenderStepped:Connect(function()
@@ -469,9 +467,7 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
--- ================= TAB 3: CÀI ĐẶT (TỐC ĐỘ, NOCLIP AN TOÀN, FIX LAG ULTRA) =================
-
--- Nhãn tiêu đề phần tốc độ
+-- ================= TAB 3: CÀI ĐẶT =================
 local SpeedTitle = Instance.new("TextLabel")
 SpeedTitle.Parent = tab3
 SpeedTitle.BackgroundTransparency = 1
@@ -482,7 +478,6 @@ SpeedTitle.TextColor3 = Color3.fromRGB(200, 200, 200)
 SpeedTitle.TextSize = 12
 SpeedTitle.TextXAlignment = Enum.TextXAlignment.Left
 
--- Ô nhập số tốc độ
 local SpeedBox = Instance.new("TextBox")
 SpeedBox.Parent = tab3
 SpeedBox.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
@@ -500,22 +495,21 @@ cornerBox.Parent = SpeedBox
 SpeedBox.FocusLost:Connect(function()
     local val = tonumber(SpeedBox.Text)
     if val then
-        if val > 165 then val = 165 end -- Giới hạn max 165
+        if val > 165 then val = 165 end
         if val < 1 then val = 1 end
         flySpeed = val
         SpeedBox.Text = tostring(flySpeed)
-        print("Đã đổi tốc độ bay thành: " .. flySpeed)
     else
         SpeedBox.Text = tostring(flySpeed)
     end
 end)
 
--- Nút Noclip An Toàn (Fix lỗi rớt lòng đất khi nhảy)
-local NoclipBtn = createButton(tab3, "Noclip (Anti-Fall): TẮT", function() end)
+-- Noclip Cực Mạnh (Xuyên mọi vật thể, chống rớt lòng đất)
+local NoclipBtn = createButton(tab3, "Noclip Cực Mạnh: TẮT", function() end)
 
 NoclipBtn.MouseButton1Click:Connect(function()
     noclipManual = not noclipManual
-    NoclipBtn.Text = noclipManual and "Noclip (Anti-Fall): BẬT" or "Noclip (Anti-Fall): TẮT"
+    NoclipBtn.Text = noclipManual and "Noclip Cực Mạnh: BẬT" or "Noclip Cực Mạnh: TẮT"
     NoclipBtn.TextColor3 = noclipManual and Color3.fromRGB(0, 255, 150) or Color3.fromRGB(255, 255, 255)
     
     if noclipManual then
@@ -537,19 +531,13 @@ NoclipBtn.MouseButton1Click:Connect(function()
     end
 end)
 
--- Xử lý Noclip thông minh chống rớt khi nhảy
+-- Vòng lặp Noclip xử lý toàn bộ các phần cơ thể nhân vật không bao giờ bị va chạm kẹt tường
 RunService.Stepped:Connect(function()
     if (isFlying or noclipManual) and player.Character then
-        local humanoid = player.Character:FindFirstChildOfClass("Humanoid")
-        -- Nếu đang bay hoặc bật noclip, vô hiệu hóa va chạm nhưng vẫn giữ độ cao ổn định khi nhảy
         for _, part in pairs(player.Character:GetDescendants()) do
-            if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then
+            if part:IsA("BasePart") then
                 part.CanCollide = false
             end
-        end
-        if humanoidRootPart and not isFlying then
-            -- Giúp nhân vật không bị tụt chân xuống đất hoặc rớt hố khi nhảy
-            humanoidRootPart.AssemblyLinearVelocity = Vector3.new(humanoidRootPart.AssemblyLinearVelocity.X, math.clamp(humanoidRootPart.AssemblyLinearVelocity.Y, -30, 100), humanoidRootPart.AssemblyLinearVelocity.Z)
         end
     end
 end)
@@ -574,7 +562,7 @@ createButton(tab3, "Fix Lag Ultra (Bật/Tắt)", function()
                 obj.Enabled = false
             end
         end
-        print("Đã kích hoạt chế độ Fix Lag Ultra mượt tối đa!")
+        print("Đã bật Fix Lag Ultra!")
     else
         print("Đã tắt Fix Lag Ultra.")
     end
