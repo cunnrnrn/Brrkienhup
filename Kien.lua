@@ -1,5 +1,5 @@
 -- ==========================================
--- SCRIPT: √12kientomato Hub Pro Max (Menu OK Click TP & Full ESP)
+-- SCRIPT: √12kientomato Hub Pro Max (Auto Platform & Anti-Void Noclip)
 -- ==========================================
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -28,10 +28,13 @@ local fixLagActive = false
 local noclipManual = false
 local clickTpActive = false
 local espPlayerActive = false
+local autoPlatformActive = false
 local currentTween = nil
 
 local selectedPosition = nil
 local markerPart = nil
+local activePlatforms = {}
+local antiVoidPart = nil
 
 -- Nhặt đồ tức thì
 ProximityPromptService.PromptButtonHoldBegan:Connect(function(prompt)
@@ -69,7 +72,7 @@ MainFrame.Parent = ScreenGui
 MainFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
 MainFrame.BackgroundTransparency = 0.05
 MainFrame.Position = UDim2.new(0.2, 0, 0.2, 0)
-MainFrame.Size = UDim2.new(0, 360, 0, 310)
+MainFrame.Size = UDim2.new(0, 360, 0, 330)
 MainFrame.Active = true
 MainFrame.Draggable = true
 
@@ -121,7 +124,7 @@ local TabButtonContainer = Instance.new("Frame")
 TabButtonContainer.Parent = MainFrame
 TabButtonContainer.BackgroundTransparency = 1
 TabButtonContainer.Position = UDim2.new(0, 10, 0, 35)
-TabButtonContainer.Size = UDim2.new(0, 100, 0, 265)
+TabButtonContainer.Size = UDim2.new(0, 100, 0, 285)
 
 local UIListLayoutTabs = Instance.new("UIListLayout")
 UIListLayoutTabs.Parent = TabButtonContainer
@@ -132,7 +135,7 @@ local ContentContainer = Instance.new("Frame")
 ContentContainer.Parent = MainFrame
 ContentContainer.BackgroundTransparency = 1
 ContentContainer.Position = UDim2.new(0, 118, 0, 35)
-ContentContainer.Size = UDim2.new(0, 232, 0, 265)
+ContentContainer.Size = UDim2.new(0, 232, 0, 285)
 
 local tabs = {}
 local function createTab(name)
@@ -153,7 +156,7 @@ local function createTab(name)
     tabContent.Parent = ContentContainer
     tabContent.BackgroundTransparency = 1
     tabContent.Size = UDim2.new(1, 0, 1, 0)
-    tabContent.CanvasSize = UDim2.new(0, 0, 0, 340)
+    tabContent.CanvasSize = UDim2.new(0, 0, 0, 360)
     tabContent.ScrollBarThickness = 3
     tabContent.Visible = false
     
@@ -170,21 +173,21 @@ local function createTab(name)
         end
         tabContent.Visible = true
         tabBtn.TextColor3 = Color3.fromRGB(0, 255, 255)
-        tabBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+        tabBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
     end)
     
     table.insert(tabs, {btn = tabBtn, content = tabContent})
     if #tabs == 1 then
         tabContent.Visible = true
         tabBtn.TextColor3 = Color3.fromRGB(0, 255, 255)
-        tabBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+        tabBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
     end
     
     return tabContent
 end
 
 local tab1 = createTab("Tele & Bay")
-local tab2 = createTab("Click TP & ESP")
+local tab2 = createTab("Click TP & Khác")
 
 local function createButton(parent, text, callback)
     local btn = Instance.new("TextButton")
@@ -275,7 +278,7 @@ createButton(tab1, "NGỪNG BAY NGAY LẬP TỨC", function()
     print("Đã dừng bay ngay lập tức!")
 end)
 
--- ================= TAB 2: CLICK TP VÀ NÚT OK TRONG MENU =================
+-- ================= TAB 2: CLICK TP & TÍNH NĂNG ĐI ĐẾN ĐÂU TẠO KHỐI ĐẾN ĐÓ =================
 local ClickTpBtn = createButton(tab2, "Chọn Điểm: TẮT", function() end)
 
 ClickTpBtn.MouseButton1Click:Connect(function()
@@ -291,37 +294,30 @@ ClickTpBtn.MouseButton1Click:Connect(function()
     end
 end)
 
--- Bấm vào màn hình game để lấy vị trí lưu lại
 mouse.Button1Down:Connect(function()
     if not clickTpActive then return end
+    local target = mouse.Target
     local hitPos = mouse.Hit
-    if not hitPos then return end
     
-    selectedPosition = hitPos + Vector3.new(0, 3, 0)
-    
-    if markerPart then markerPart:Destroy() end
-    markerPart = Instance.new("Part")
-    markerPart.Size = Instance.new("Vector3", {2, 2, 2})
-    markerPart.Size = Vector3.new(2, 2, 2)
-    markerPart.Shape = Enum.PartType.Ball
-    markerPart.Color = Color3.fromRGB(0, 255, 255)
-    markerPart.Material = Enum.Material.Neon
-    markerPart.Transparency = 0.3
-    markerPart.Anchored = true
-    markerPart.CanCollide = false
-    markerPart.CFrame = selectedPosition
-    markerPart.Parent = Workspace
-    
-    print("Đã lưu tọa độ điểm! Giờ chỉ việc bấm nút OK trong Menu.")
+    if target and target:IsA("BasePart") and hitPos then
+        selectedPosition = hitPos + Vector3.new(0, 3, 0)
+        
+        if markerPart then markerPart:Destroy() end
+        markerPart = Instance.new("Part")
+        markerPart.Size = Vector3.new(2, 2, 2)
+        markerPart.Shape = Enum.PartType.Ball
+        markerPart.Color = Color3.fromRGB(0, 255, 255)
+        markerPart.Material = Enum.Material.Neon
+        markerPart.Transparency = 0.3
+        markerPart.Anchored = true
+        markerPart.CanCollide = false
+        markerPart.CFrame = selectedPosition
+        markerPart.Parent = Workspace
+    end
 end)
 
--- NÚT OK CHÍNH THỨC NẰM TRONG MENU ĐỂ BẤM BAY
-createButton(tab2, "✅ NÚT OK (BẤM ĐỂ BAY TỚI ĐIỂM)", function()
-    if not selectedPosition or not humanoidRootPart then
-        print("Bạn chưa chọn vị trí trên bản đồ!")
-        return
-    end
-    
+createButton(tab2, "✅ NÚT OK (BẤM ĐỂ BAY)", function()
+    if not selectedPosition or not humanoidRootPart then return end
     if markerPart then markerPart:Destroy() end
     
     local distance = (humanoidRootPart.Position - selectedPosition.Position).Magnitude
@@ -334,8 +330,58 @@ createButton(tab2, "✅ NÚT OK (BẤM ĐỂ BAY TỚI ĐIỂM)", function()
     
     currentTween.Completed:Connect(function()
         isFlying = false
-        print("Đã bay đến điểm chọn bằng nút OK thành công!")
     end)
+end)
+
+-- TÍNH NĂNG TỰ ĐỘNG TẠO KHỐI DƯỚI CHÂN KHI DI CHUYỂN (AUTO PLATFORM)
+local AutoPlatformBtn = createButton(tab2, "Khối Theo Chân: TẮT", function() end)
+
+AutoPlatformBtn.MouseButton1Click:Connect(function()
+    autoPlatformActive = not autoPlatformActive
+    if autoPlatformActive then
+        AutoPlatformBtn.Text = "Khối Theo Chân: BẬT"
+        AutoPlatformBtn.TextColor3 = Color3.fromRGB(0, 255, 150)
+    else
+        AutoPlatformBtn.Text = "Khối Theo Chân: TẮT"
+        AutoPlatformBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+        -- Xóa toàn bộ khối đã tạo
+        for _, p in pairs(activePlatforms) do
+            if p then p:Destroy() end
+        end
+        activePlatforms = {}
+    end
+end)
+
+-- Vòng lặp cập nhật tạo khối liên tục dưới chân khi đi
+RunService.Heartbeat:Connect(function()
+    if autoPlatformActive and humanoidRootPart then
+        local pos = humanoidRootPart.Position - Vector3.new(0, 3.5, 0)
+        -- Kiểm tra nếu chưa có khối nào ở gần vị trí hiện tại thì tạo mới
+        local createNew = true
+        for _, p in pairs(activePlatforms) do
+            if p and (p.Position - pos).Magnitude < 2 then
+                createNew = false
+                break
+            end
+        end
+        
+        if createNew then
+            local plat = Instance.new("Part")
+            plat.Size = Vector3.new(4, 1, 4)
+            plat.Position = pos
+            plat.Anchored = true
+            plat.CanCollide = true
+            plat.Transparency = 1 -- Trong suốt
+            plat.Parent = Workspace
+            table.insert(activePlatforms, plat)
+            
+            -- Giới hạn số lượng khối để không bị nặng máy (giữ tối đa 30 khối gần nhất)
+            if #activePlatforms > 30 then
+                local oldPlat = table.remove(activePlatforms, 1)
+                if oldPlat then oldPlat:Destroy() end
+            end
+        end
+    end
 end)
 
 -- ================= ESP TÊN + KHOẢNG CÁCH NGƯỜI CHƠI =================
@@ -427,12 +473,32 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
--- Noclip & Fix Lag
+-- Noclip & Chống Rơi Xuống Void + Fix Lag
 local NoclipBtn = createButton(tab2, "Noclip: TẮT", function() end)
+
 NoclipBtn.MouseButton1Click:Connect(function()
     noclipManual = not noclipManual
     NoclipBtn.Text = noclipManual and "Noclip: BẬT" or "Noclip: TẮT"
     NoclipBtn.TextColor3 = noclipManual and Color3.fromRGB(0, 255, 150) or Color3.fromRGB(255, 255, 255)
+    
+    -- Tạo hoặc xóa sàn chống rơi (Anti-Void) khi bật/tắt noclip
+    if noclipManual then
+        if not antiVoidPart then
+            antiVoidPart = Instance.new("Part")
+            antiVoidPart.Name = "AntiVoidFloor"
+            antiVoidPart.Size = Vector3.new(10000, 5, 10000)
+            antiVoidPart.Position = Vector3.new(0, -50, 0) -- Nằm ở độ sâu -50 phía dưới map
+            antiVoidPart.Anchored = true
+            antiVoidPart.CanCollide = true
+            antiVoidPart.Transparency = 1 -- Tàng hình
+            antiVoidPart.Parent = Workspace
+        end
+    else
+        if antiVoidPart then
+            antiVoidPart:Destroy()
+            antiVoidPart = nil
+        end
+    end
 end)
 
 RunService.Stepped:Connect(function()
