@@ -1,5 +1,5 @@
 -- ==========================================
--- SCRIPT: √12kientomato Hub Pro Max (Auto Platform & Anti-Void Noclip)
+-- SCRIPT: √12kientomato Hub Pro Max (Ultra Settings & Fixed Noclip)
 -- ==========================================
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -8,6 +8,7 @@ local CoreGui = game:GetService("CoreGui")
 local Workspace = game:GetService("Workspace")
 local Lighting = game:GetService("Lighting")
 local ProximityPromptService = game:GetService("ProximityPromptService")
+local UserInputService = game:GetService("UserInputService")
 
 local player = Players.LocalPlayer
 local mouse = player:GetMouse()
@@ -23,7 +24,7 @@ end)
 local base1 = nil
 local base2 = nil
 local isFlying = false
-local flySpeed = 165
+local flySpeed = 165 -- Tốc độ mặc định tối đa
 local fixLagActive = false
 local noclipManual = false
 local clickTpActive = false
@@ -119,7 +120,7 @@ ToggleBtn.MouseButton1Click:Connect(function()
     MainFrame.Visible = not MainFrame.Visible
 end)
 
--- Tab hệ thống
+-- Tab hệ thống (Chia thành 3 Tab: Tele & Bay, Tính Năng, Cài Đặt)
 local TabButtonContainer = Instance.new("Frame")
 TabButtonContainer.Parent = MainFrame
 TabButtonContainer.BackgroundTransparency = 1
@@ -156,7 +157,7 @@ local function createTab(name)
     tabContent.Parent = ContentContainer
     tabContent.BackgroundTransparency = 1
     tabContent.Size = UDim2.new(1, 0, 1, 0)
-    tabContent.CanvasSize = UDim2.new(0, 0, 0, 360)
+    tabContent.CanvasSize = UDim2.new(0, 0, 0, 400)
     tabContent.ScrollBarThickness = 3
     tabContent.Visible = false
     
@@ -187,7 +188,8 @@ local function createTab(name)
 end
 
 local tab1 = createTab("Tele & Bay")
-local tab2 = createTab("Click TP & Khác")
+local tab2 = createTab("Tính Năng")
+local tab3 = createTab("Cài Đặt")
 
 local function createButton(parent, text, callback)
     local btn = Instance.new("TextButton")
@@ -207,7 +209,7 @@ local function createButton(parent, text, callback)
     return btn
 end
 
--- ================= TAB 1 =================
+-- ================= TAB 1: TELE & BAY =================
 createButton(tab1, "Lưu Vị Trí Base 1", function()
     if humanoidRootPart then
         base1 = humanoidRootPart.CFrame
@@ -278,7 +280,7 @@ createButton(tab1, "NGỪNG BAY NGAY LẬP TỨC", function()
     print("Đã dừng bay ngay lập tức!")
 end)
 
--- ================= TAB 2: CLICK TP & TÍNH NĂNG ĐI ĐẾN ĐÂU TẠO KHỐI ĐẾN ĐÓ =================
+-- ================= TAB 2: TÍNH NĂNG (CLICK TP, KHỐI THEO CHÂN, ESP) =================
 local ClickTpBtn = createButton(tab2, "Chọn Điểm: TẮT", function() end)
 
 ClickTpBtn.MouseButton1Click:Connect(function()
@@ -333,7 +335,6 @@ createButton(tab2, "✅ NÚT OK (BẤM ĐỂ BAY)", function()
     end)
 end)
 
--- TÍNH NĂNG TỰ ĐỘNG TẠO KHỐI DƯỚI CHÂN KHI DI CHUYỂN (AUTO PLATFORM)
 local AutoPlatformBtn = createButton(tab2, "Khối Theo Chân: TẮT", function() end)
 
 AutoPlatformBtn.MouseButton1Click:Connect(function()
@@ -344,7 +345,6 @@ AutoPlatformBtn.MouseButton1Click:Connect(function()
     else
         AutoPlatformBtn.Text = "Khối Theo Chân: TẮT"
         AutoPlatformBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-        -- Xóa toàn bộ khối đã tạo
         for _, p in pairs(activePlatforms) do
             if p then p:Destroy() end
         end
@@ -352,11 +352,9 @@ AutoPlatformBtn.MouseButton1Click:Connect(function()
     end
 end)
 
--- Vòng lặp cập nhật tạo khối liên tục dưới chân khi đi
 RunService.Heartbeat:Connect(function()
     if autoPlatformActive and humanoidRootPart then
         local pos = humanoidRootPart.Position - Vector3.new(0, 3.5, 0)
-        -- Kiểm tra nếu chưa có khối nào ở gần vị trí hiện tại thì tạo mới
         local createNew = true
         for _, p in pairs(activePlatforms) do
             if p and (p.Position - pos).Magnitude < 2 then
@@ -371,11 +369,10 @@ RunService.Heartbeat:Connect(function()
             plat.Position = pos
             plat.Anchored = true
             plat.CanCollide = true
-            plat.Transparency = 1 -- Trong suốt
+            plat.Transparency = 1
             plat.Parent = Workspace
             table.insert(activePlatforms, plat)
             
-            -- Giới hạn số lượng khối để không bị nặng máy (giữ tối đa 30 khối gần nhất)
             if #activePlatforms > 30 then
                 local oldPlat = table.remove(activePlatforms, 1)
                 if oldPlat then oldPlat:Destroy() end
@@ -384,7 +381,6 @@ RunService.Heartbeat:Connect(function()
     end
 end)
 
--- ================= ESP TÊN + KHOẢNG CÁCH NGƯỜI CHƠI =================
 local EspBtn = createButton(tab2, "ESP Tên & Khoảng Cách: TẮT", function() end)
 
 EspBtn.MouseButton1Click:Connect(function()
@@ -473,24 +469,64 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
--- Noclip & Chống Rơi Xuống Void + Fix Lag
-local NoclipBtn = createButton(tab2, "Noclip: TẮT", function() end)
+-- ================= TAB 3: CÀI ĐẶT (TỐC ĐỘ, NOCLIP AN TOÀN, FIX LAG ULTRA) =================
+
+-- Nhãn tiêu đề phần tốc độ
+local SpeedTitle = Instance.new("TextLabel")
+SpeedTitle.Parent = tab3
+SpeedTitle.BackgroundTransparency = 1
+SpeedTitle.Size = UDim2.new(1, -5, 0, 22)
+SpeedTitle.Font = Enum.Font.SourceSansBold
+SpeedTitle.Text = "Tốc độ bay (Max: 165):"
+SpeedTitle.TextColor3 = Color3.fromRGB(200, 200, 200)
+SpeedTitle.TextSize = 12
+SpeedTitle.TextXAlignment = Enum.TextXAlignment.Left
+
+-- Ô nhập số tốc độ
+local SpeedBox = Instance.new("TextBox")
+SpeedBox.Parent = tab3
+SpeedBox.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+SpeedBox.Size = UDim2.new(1, -5, 0, 30)
+SpeedBox.Font = Enum.Font.SourceSansBold
+SpeedBox.Text = tostring(flySpeed)
+SpeedBox.TextColor3 = Color3.fromRGB(0, 255, 255)
+SpeedBox.TextSize = 14
+SpeedBox.ClearTextOnFocus = false
+
+local cornerBox = Instance.new("UICorner")
+cornerBox.CornerRadius = UDim.new(0, 5)
+cornerBox.Parent = SpeedBox
+
+SpeedBox.FocusLost:Connect(function()
+    local val = tonumber(SpeedBox.Text)
+    if val then
+        if val > 165 then val = 165 end -- Giới hạn max 165
+        if val < 1 then val = 1 end
+        flySpeed = val
+        SpeedBox.Text = tostring(flySpeed)
+        print("Đã đổi tốc độ bay thành: " .. flySpeed)
+    else
+        SpeedBox.Text = tostring(flySpeed)
+    end
+end)
+
+-- Nút Noclip An Toàn (Fix lỗi rớt lòng đất khi nhảy)
+local NoclipBtn = createButton(tab3, "Noclip (Anti-Fall): TẮT", function() end)
 
 NoclipBtn.MouseButton1Click:Connect(function()
     noclipManual = not noclipManual
-    NoclipBtn.Text = noclipManual and "Noclip: BẬT" or "Noclip: TẮT"
+    NoclipBtn.Text = noclipManual and "Noclip (Anti-Fall): BẬT" or "Noclip (Anti-Fall): TẮT"
     NoclipBtn.TextColor3 = noclipManual and Color3.fromRGB(0, 255, 150) or Color3.fromRGB(255, 255, 255)
     
-    -- Tạo hoặc xóa sàn chống rơi (Anti-Void) khi bật/tắt noclip
     if noclipManual then
         if not antiVoidPart then
             antiVoidPart = Instance.new("Part")
             antiVoidPart.Name = "AntiVoidFloor"
-            antiVoidPart.Size = Vector3.new(10000, 5, 10000)
-            antiVoidPart.Position = Vector3.new(0, -50, 0) -- Nằm ở độ sâu -50 phía dưới map
+            antiVoidPart.Size = Vector3.new(20000, 5, 20000)
+            antiVoidPart.Position = Vector3.new(0, -30, 0)
             antiVoidPart.Anchored = true
             antiVoidPart.CanCollide = true
-            antiVoidPart.Transparency = 1 -- Tàng hình
+            antiVoidPart.Transparency = 1
             antiVoidPart.Parent = Workspace
         end
     else
@@ -501,34 +537,45 @@ NoclipBtn.MouseButton1Click:Connect(function()
     end
 end)
 
+-- Xử lý Noclip thông minh chống rớt khi nhảy
 RunService.Stepped:Connect(function()
     if (isFlying or noclipManual) and player.Character then
+        local humanoid = player.Character:FindFirstChildOfClass("Humanoid")
+        -- Nếu đang bay hoặc bật noclip, vô hiệu hóa va chạm nhưng vẫn giữ độ cao ổn định khi nhảy
         for _, part in pairs(player.Character:GetDescendants()) do
-            if part:IsA("BasePart") then
+            if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then
                 part.CanCollide = false
             end
+        end
+        if humanoidRootPart and not isFlying then
+            -- Giúp nhân vật không bị tụt chân xuống đất hoặc rớt hố khi nhảy
+            humanoidRootPart.AssemblyLinearVelocity = Vector3.new(humanoidRootPart.AssemblyLinearVelocity.X, math.clamp(humanoidRootPart.AssemblyLinearVelocity.Y, -30, 100), humanoidRootPart.AssemblyLinearVelocity.Z)
         end
     end
 end)
 
-createButton(tab2, "Fix Lag Nâng Cao (Bật/Tắt)", function()
+-- Fix Lag Ultra Nâng Cao
+createButton(tab3, "Fix Lag Ultra (Bật/Tắt)", function()
     fixLagActive = not fixLagActive
     if fixLagActive then
         Lighting.GlobalShadows = false
         Lighting.FogEnd = 9e9
         Lighting.Brightness = 1
+        Lighting.ClockTime = 12
+        
         for _, obj in pairs(Workspace:GetDescendants()) do
             if obj:IsA("BasePart") then
                 obj.Material = Enum.Material.SmoothPlastic
                 obj.Reflectance = 0
+                obj.CastShadow = false
             elseif obj:IsA("Decal") or obj:IsA("Texture") then
                 obj.Transparency = 1
-            elseif obj:IsA("ParticleEmitter") or obj:IsA("Trail") then
+            elseif obj:IsA("ParticleEmitter") or obj:IsA("Trail") or obj:IsA("Smoke") or obj:IsA("Fire") or obj:IsA("Explosion") then
                 obj.Enabled = false
             end
         end
-        print("Đã bật Fix Lag!")
+        print("Đã kích hoạt chế độ Fix Lag Ultra mượt tối đa!")
     else
-        print("Đã tắt Fix Lag.")
+        print("Đã tắt Fix Lag Ultra.")
     end
 end)
