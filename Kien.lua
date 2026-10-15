@@ -1,5 +1,5 @@
 -- ==========================================
--- SCRIPT: √12kientomato Hub Pro Max (Menu OK Click TP & Full Player ESP)
+-- SCRIPT: √12kientomato Hub Pro Max (Menu OK Click TP & Full ESP)
 -- ==========================================
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -8,7 +8,6 @@ local CoreGui = game:GetService("CoreGui")
 local Workspace = game:GetService("Workspace")
 local Lighting = game:GetService("Lighting")
 local ProximityPromptService = game:GetService("ProximityPromptService")
-local UserInputService = game:GetService("UserInputService")
 
 local player = Players.LocalPlayer
 local mouse = player:GetMouse()
@@ -31,16 +30,15 @@ local clickTpActive = false
 local espPlayerActive = false
 local currentTween = nil
 
--- Biến lưu vị trí Click TP
 local selectedPosition = nil
 local markerPart = nil
 
--- Tự động nhặt đồ tức thì
+-- Nhặt đồ tức thì
 ProximityPromptService.PromptButtonHoldBegan:Connect(function(prompt)
     fireproximityprompt(prompt)
 end)
 
--- Tạo GUI Giao Diện
+-- Tạo GUI
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "√12kientomato_Gui"
 ScreenGui.Parent = CoreGui
@@ -91,7 +89,7 @@ Title.TextColor3 = Color3.fromRGB(255, 255, 255)
 Title.TextSize = 14
 Title.TextXAlignment = Enum.TextXAlignment.Left
 
--- Bảng hiển thị FPS Live
+-- Hiển thị FPS
 local FpsLabel = Instance.new("TextLabel")
 FpsLabel.Parent = MainFrame
 FpsLabel.BackgroundTransparency = 1
@@ -118,7 +116,7 @@ ToggleBtn.MouseButton1Click:Connect(function()
     MainFrame.Visible = not MainFrame.Visible
 end)
 
--- Quản lý Tab
+-- Tab hệ thống
 local TabButtonContainer = Instance.new("Frame")
 TabButtonContainer.Parent = MainFrame
 TabButtonContainer.BackgroundTransparency = 1
@@ -206,7 +204,7 @@ local function createButton(parent, text, callback)
     return btn
 end
 
--- ================= TAB 1: BASE & BAY =================
+-- ================= TAB 1 =================
 createButton(tab1, "Lưu Vị Trí Base 1", function()
     if humanoidRootPart then
         base1 = humanoidRootPart.CFrame
@@ -277,23 +275,23 @@ createButton(tab1, "NGỪNG BAY NGAY LẬP TỨC", function()
     print("Đã dừng bay ngay lập tức!")
 end)
 
--- ================= TAB 2: CLICK TP (NÚT OK TRONG MENU) & ESP =================
-local ClickTpBtn = createButton(tab2, "Click TP: TẮT", function() end)
+-- ================= TAB 2: CLICK TP VÀ NÚT OK TRONG MENU =================
+local ClickTpBtn = createButton(tab2, "Chọn Điểm: TẮT", function() end)
 
 ClickTpBtn.MouseButton1Click:Connect(function()
     clickTpActive = not clickTpActive
     if clickTpActive then
-        ClickTpBtn.Text = "Click TP: BẬT"
+        ClickTpBtn.Text = "Chọn Điểm: BẬT"
         ClickTpBtn.TextColor3 = Color3.fromRGB(0, 255, 150)
     else
-        ClickTpBtn.Text = "Click TP: TẮT"
+        ClickTpBtn.Text = "Chọn Điểm: TẮT"
         ClickTpBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
         selectedPosition = nil
         if markerPart then markerPart:Destroy() end
     end
 end)
 
--- Bắt sự kiện chọn điểm bằng chuột/chạm
+-- Bấm vào màn hình game để lấy vị trí lưu lại
 mouse.Button1Down:Connect(function()
     if not clickTpActive then return end
     local hitPos = mouse.Hit
@@ -303,7 +301,8 @@ mouse.Button1Down:Connect(function()
     
     if markerPart then markerPart:Destroy() end
     markerPart = Instance.new("Part")
-    markerPart.Size = Vector3.new(1.5, 1.5, 1.5)
+    markerPart.Size = Instance.new("Vector3", {2, 2, 2})
+    markerPart.Size = Vector3.new(2, 2, 2)
     markerPart.Shape = Enum.PartType.Ball
     markerPart.Color = Color3.fromRGB(0, 255, 255)
     markerPart.Material = Enum.Material.Neon
@@ -313,13 +312,13 @@ mouse.Button1Down:Connect(function()
     markerPart.CFrame = selectedPosition
     markerPart.Parent = Workspace
     
-    print("Đã chọn vị trí điểm đến! Hãy bấm nút OK trong Menu.")
+    print("Đã lưu tọa độ điểm! Giờ chỉ việc bấm nút OK trong Menu.")
 end)
 
--- Nút OK nằm ngay trong Menu để bay tới điểm đã chọn
-createButton(tab2, "🚀 BẤM OK ĐỂ BAY TỚI ĐIỂM", function()
+-- NÚT OK CHÍNH THỨC NẰM TRONG MENU ĐỂ BẤM BAY
+createButton(tab2, "✅ NÚT OK (BẤM ĐỂ BAY TỚI ĐIỂM)", function()
     if not selectedPosition or not humanoidRootPart then
-        print("Bạn chưa chọn điểm trên màn hình!")
+        print("Bạn chưa chọn vị trí trên bản đồ!")
         return
     end
     
@@ -335,11 +334,11 @@ createButton(tab2, "🚀 BẤM OK ĐỂ BAY TỚI ĐIỂM", function()
     
     currentTween.Completed:Connect(function()
         isFlying = false
-        print("Đã bay đến vị trí đã chọn thành công!")
+        print("Đã bay đến điểm chọn bằng nút OK thành công!")
     end)
 end)
 
--- ================= ESP NGƯỜI CHƠI (TÊN + KHOẢNG CÁCH VĨNH VIỄN) =================
+-- ================= ESP TÊN + KHOẢNG CÁCH NGƯỜI CHƠI =================
 local EspBtn = createButton(tab2, "ESP Tên & Khoảng Cách: TẮT", function() end)
 
 EspBtn.MouseButton1Click:Connect(function()
@@ -359,7 +358,6 @@ local function setupPlayerEsp(p)
         
         if hrp:FindFirstChild("KienHighlight") then return end
         
-        -- Viền Highlight sáng quanh người chơi
         local highlight = Instance.new("Highlight")
         highlight.Name = "KienHighlight"
         highlight.Adornee = char
@@ -369,7 +367,6 @@ local function setupPlayerEsp(p)
         highlight.OutlineTransparency = 0
         highlight.Parent = hrp
         
-        -- Nhãn tên và khoảng cách trên đầu
         local billboard = Instance.new("BillboardGui")
         billboard.Name = "KienNameEsp"
         billboard.Size = UDim2.new(0, 200, 0, 50)
@@ -384,10 +381,9 @@ local function setupPlayerEsp(p)
         textLabel.Font = Enum.Font.SourceSansBold
         textLabel.TextSize = 14
         textLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-        textLabel.TextStrokeTransparency = 0 -- Viền chữ đen dễ nhìn
+        textLabel.TextStrokeTransparency = 0
         textLabel.Parent = billboard
         
-        -- Cập nhật tên và khoảng cách liên tục
         task.spawn(function()
             while billboard and billboard.Parent and humanoidRootPart and hrp do
                 local dist = math.floor((humanoidRootPart.Position - hrp.Position).Magnitude)
@@ -413,7 +409,6 @@ for _, p in pairs(Players:GetPlayers()) do
 end
 Players.PlayerAdded:Connect(setupPlayerEsp)
 
--- Bật/tắt trạng thái ESP toàn bộ người chơi liên tục kể cả khi hồi sinh
 RunService.RenderStepped:Connect(function()
     for _, p in pairs(Players:GetPlayers()) do
         if p ~= player and p.Character then
@@ -450,7 +445,7 @@ RunService.Stepped:Connect(function()
     end
 end)
 
-createButton(tab2, "Fix Lag Nâng Cao (Bật/Tătă)", function()
+createButton(tab2, "Fix Lag Nâng Cao (Bật/Tắt)", function()
     fixLagActive = not fixLagActive
     if fixLagActive then
         Lighting.GlobalShadows = false
