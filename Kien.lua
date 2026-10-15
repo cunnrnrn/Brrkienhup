@@ -1,5 +1,5 @@
 -- ==========================================
--- SCRIPT: √12kientomato Hub Pro Max (Direct Exec)
+-- SCRIPT: √12kientomato Hub Pro Max (GitHub Ready)
 -- ==========================================
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
