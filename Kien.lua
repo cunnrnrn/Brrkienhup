@@ -12,7 +12,7 @@ local ProximityPromptService = game:GetService("ProximityPromptService")
 local player = Players.LocalPlayer
 local character = player.Character or player.CharacterAdded:Wait()
 local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
-
+f
 player.CharacterAdded:Connect(function(newChar)
     character = newChar
     humanoidRootPart = character:WaitForChild("HumanoidRootPart")
