@@ -1,5 +1,5 @@
 -- ==========================================
--- SCRIPT: √12kientomato Hub Pro Max (Click TP & Persistent ESP)
+-- SCRIPT: √12kientomato Hub Pro Max (Menu OK Click TP & Full Player ESP)
 -- ==========================================
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -31,10 +31,9 @@ local clickTpActive = false
 local espPlayerActive = false
 local currentTween = nil
 
--- Biến cho tính năng Click TP
+-- Biến lưu vị trí Click TP
 local selectedPosition = nil
-local targetPart = nil
-local guiBillboard = nil
+local markerPart = nil
 
 -- Tự động nhặt đồ tức thì
 ProximityPromptService.PromptButtonHoldBegan:Connect(function(prompt)
@@ -72,7 +71,7 @@ MainFrame.Parent = ScreenGui
 MainFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
 MainFrame.BackgroundTransparency = 0.05
 MainFrame.Position = UDim2.new(0.2, 0, 0.2, 0)
-MainFrame.Size = UDim2.new(0, 360, 0, 280)
+MainFrame.Size = UDim2.new(0, 360, 0, 310)
 MainFrame.Active = true
 MainFrame.Draggable = true
 
@@ -124,7 +123,7 @@ local TabButtonContainer = Instance.new("Frame")
 TabButtonContainer.Parent = MainFrame
 TabButtonContainer.BackgroundTransparency = 1
 TabButtonContainer.Position = UDim2.new(0, 10, 0, 35)
-TabButtonContainer.Size = UDim2.new(0, 100, 0, 235)
+TabButtonContainer.Size = UDim2.new(0, 100, 0, 265)
 
 local UIListLayoutTabs = Instance.new("UIListLayout")
 UIListLayoutTabs.Parent = TabButtonContainer
@@ -135,7 +134,7 @@ local ContentContainer = Instance.new("Frame")
 ContentContainer.Parent = MainFrame
 ContentContainer.BackgroundTransparency = 1
 ContentContainer.Position = UDim2.new(0, 118, 0, 35)
-ContentContainer.Size = UDim2.new(0, 232, 0, 235)
+ContentContainer.Size = UDim2.new(0, 232, 0, 265)
 
 local tabs = {}
 local function createTab(name)
@@ -156,7 +155,7 @@ local function createTab(name)
     tabContent.Parent = ContentContainer
     tabContent.BackgroundTransparency = 1
     tabContent.Size = UDim2.new(1, 0, 1, 0)
-    tabContent.CanvasSize = UDim2.new(0, 0, 0, 320)
+    tabContent.CanvasSize = UDim2.new(0, 0, 0, 340)
     tabContent.ScrollBarThickness = 3
     tabContent.Visible = false
     
@@ -278,7 +277,7 @@ createButton(tab1, "NGỪNG BAY NGAY LẬP TỨC", function()
     print("Đã dừng bay ngay lập tức!")
 end)
 
--- ================= TAB 2: CLICK TP & ESP NGƯỜI CHƠI =================
+-- ================= TAB 2: CLICK TP (NÚT OK TRONG MENU) & ESP =================
 local ClickTpBtn = createButton(tab2, "Click TP: TẮT", function() end)
 
 ClickTpBtn.MouseButton1Click:Connect(function()
@@ -289,132 +288,117 @@ ClickTpBtn.MouseButton1Click:Connect(function()
     else
         ClickTpBtn.Text = "Click TP: TẮT"
         ClickTpBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-        if guiBillboard then guiBillboard:Destroy() end
+        selectedPosition = nil
+        if markerPart then markerPart:Destroy() end
     end
 end)
 
--- Sự kiện bắt click chuột/chạm màn hình để chọn điểm TP
+-- Bắt sự kiện chọn điểm bằng chuột/chạm
 mouse.Button1Down:Connect(function()
     if not clickTpActive then return end
     local hitPos = mouse.Hit
     if not hitPos then return end
     
-    selectedPosition = hitPos + Vector3.new(0, 3, 0) -- Nâng lên một chút tránh kẹt đất
+    selectedPosition = hitPos + Vector3.new(0, 3, 0)
     
-    -- Xóa bảng cũ nếu có
-    if guiBillboard then guiBillboard:Destroy() end
+    if markerPart then markerPart:Destroy() end
+    markerPart = Instance.new("Part")
+    markerPart.Size = Vector3.new(1.5, 1.5, 1.5)
+    markerPart.Shape = Enum.PartType.Ball
+    markerPart.Color = Color3.fromRGB(0, 255, 255)
+    markerPart.Material = Enum.Material.Neon
+    markerPart.Transparency = 0.3
+    markerPart.Anchored = true
+    markerPart.CanCollide = false
+    markerPart.CFrame = selectedPosition
+    markerPart.Parent = Workspace
     
-    -- Tạo một Part ẩn tại điểm chọn để gán BillboardGUI chứa nút OK
-    targetPart = Instance.new("Part")
-    targetPart.Size = Vector3.new(1, 1, 1)
-    targetPart.Transparency = 1
-    targetPart.Anchored = true
-    targetPart.CanCollide = false
-    targetPart.CFrame = selectedPosition
-    targetPart.Parent = Workspace
+    print("Đã chọn vị trí điểm đến! Hãy bấm nút OK trong Menu.")
+end)
+
+-- Nút OK nằm ngay trong Menu để bay tới điểm đã chọn
+createButton(tab2, "🚀 BẤM OK ĐỂ BAY TỚI ĐIỂM", function()
+    if not selectedPosition or not humanoidRootPart then
+        print("Bạn chưa chọn điểm trên màn hình!")
+        return
+    end
     
-    guiBillboard = Instance.new("BillboardGui")
-    guiBillboard.Size = UDim2.new(0, 160, 0, 70)
-    guiBillboard.AlwaysOnTop = true
-    guiBillboard.Adornee = targetPart
-    guiBillboard.Parent = targetPart
+    if markerPart then markerPart:Destroy() end
     
-    -- Khung hiển thị khoảng cách & nút OK
-    local infoLabel = Instance.new("TextLabel")
-    infoLabel.Size = UDim2.new(1, 0, 0, 30)
-    infoLabel.BackgroundTransparency = 1
-    infoLabel.Font = Enum.Font.SourceSansBold
-    infoLabel.TextSize = 13
-    infoLabel.TextColor3 = Color3.fromRGB(255, 255, 0)
-    infoLabel.Parent = guiBillboard
+    local distance = (humanoidRootPart.Position - selectedPosition.Position).Magnitude
+    local duration = distance / flySpeed
     
-    -- Cập nhật khoảng cách liên tục
-    task.spawn(function()
-        while guiBillboard and guiBillboard.Parent and humanoidRootPart do
-            local dist = math.floor((humanoidRootPart.Position - selectedPosition.Position).Magnitude)
-            infoLabel.Text = "Khoảng cách: " .. dist .. "m"
-            task.wait(0.2)
-        end
-    end)
+    isFlying = true
+    local tweenInfo = TweenInfo.new(duration, Enum.EasingStyle.Linear)
+    currentTween = TweenService:Create(humanoidRootPart, tweenInfo, {CFrame = selectedPosition})
+    currentTween:Play()
     
-    local okBtn = Instance.new("TextButton")
-    okBtn.Size = UDim2.new(1, 0, 0, 35)
-    okBtn.Position = UDim2.new(0, 0, 0, 32)
-    okBtn.BackgroundColor3 = Color3.fromRGB(0, 200, 100)
-    okBtn.Font = Enum.Font.SourceSansBold
-    okBtn.Text = "BẤM ĐỂ BAY (OK)"
-    okBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    okBtn.TextSize = 13
-    okBtn.Parent = guiBillboard
-    
-    local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, 6)
-    corner.Parent = okBtn
-    
-    -- Khi bấm nút OK -> Bay tới điểm đó tốc độ 165
-    okBtn.MouseButton1Click:Connect(function()
-        if not selectedPosition or not humanoidRootPart then return end
-        
-        if guiBillboard then guiBillboard:Destroy() end
-        if targetPart then targetPart:Destroy() end
-        
-        local distance = (humanoidRootPart.Position - selectedPosition.Position).Magnitude
-        local duration = distance / flySpeed
-        
-        isFlying = true
-        local tweenInfo = TweenInfo.new(duration, Enum.EasingStyle.Linear)
-        currentTween = TweenService:Create(otherPart or humanoidRootPart, tweenInfo, {CFrame = selectedPosition})
-        
-        -- Dùng trực tiếp cho RootPart
-        local activeTween = TweenService:Create(humanoidRootPart, tweenInfo, {CFrame = selectedPosition})
-        activeTween:Play()
-        
-        activeTween.Completed:Connect(function()
-            isFlying = false
-            print("Đã bay đến điểm chọn thành công!")
-        end)
+    currentTween.Completed:Connect(function()
+        isFlying = false
+        print("Đã bay đến vị trí đã chọn thành công!")
     end)
 end)
 
--- ================= ESP NGƯỜI CHƠI VĨNH VIỄN (KỂ CẢ KHI HỒI SINH) =================
-local EspBtn = createButton(tab2, "ESP Người Chơi: TẮT", function() end)
+-- ================= ESP NGƯỜI CHƠI (TÊN + KHOẢNG CÁCH VĨNH VIỄN) =================
+local EspBtn = createButton(tab2, "ESP Tên & Khoảng Cách: TẮT", function() end)
 
 EspBtn.MouseButton1Click:Connect(function()
-    espPlayeractive = not espPlayeractive
-    if espPlayeractive then
-        EspBtn.Text = "ESP Người Chơi: BẬT"
-        EspBtn.TextColor3 = Color3.fromRGB(0, 255, 150)
-    else
-        EspBtn.Text = "ESP Người Chơi: TẮT"
-        EspBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    end
+    espPlayerActive = not espPlayerActive
+    EspBtn.Text = espPlayerActive and "ESP Tên & Khoảng Cách: BẬT" or "ESP Tên & Khoảng Cách: TẮT"
+    EspBtn.TextColor3 = espPlayerActive and Color3.fromRGB(0, 255, 150) or Color3.fromRGB(255, 255, 255)
 end)
 
--- Hàm tạo/duy trì ESP cho mỗi người chơi
 local function setupPlayerEsp(p)
     if p == player then return end
     
     local function applyEsp(char)
         if not char then return end
         local hrp = char:WaitForChild("HumanoidRootPart", 5)
-        if not hrp then return end
+        local head = char:WaitForChild("Head", 5)
+        if not hrp or not head then return end
         
-        -- Tránh tạo trùng ESP nếu đã có
-        if hrp:FindFirstChild("KienEspBox") then return end
+        if hrp:FindFirstChild("KienHighlight") then return end
         
+        -- Viền Highlight sáng quanh người chơi
         local highlight = Instance.new("Highlight")
-        highlight.Name = "KienEspBox"
+        highlight.Name = "KienHighlight"
         highlight.Adornee = char
         highlight.FillColor = Color3.fromRGB(255, 0, 0)
         highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
         highlight.FillTransparency = 0.5
         highlight.OutlineTransparency = 0
         highlight.Parent = hrp
+        
+        -- Nhãn tên và khoảng cách trên đầu
+        local billboard = Instance.new("BillboardGui")
+        billboard.Name = "KienNameEsp"
+        billboard.Size = UDim2.new(0, 200, 0, 50)
+        billboard.StudsOffset = Vector3.new(0, 2.5, 0)
+        billboard.AlwaysOnTop = true
+        billboard.Adornee = head
+        billboard.Parent = hrp
+        
+        local textLabel = Instance.new("TextLabel")
+        textLabel.Size = UDim2.new(1, 0, 1, 0)
+        textLabel.BackgroundTransparency = 1
+        textLabel.Font = Enum.Font.SourceSansBold
+        textLabel.TextSize = 14
+        textLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+        textLabel.TextStrokeTransparency = 0 -- Viền chữ đen dễ nhìn
+        textLabel.Parent = billboard
+        
+        -- Cập nhật tên và khoảng cách liên tục
+        task.spawn(function()
+            while billboard and billboard.Parent and humanoidRootPart and hrp do
+                local dist = math.floor((humanoidRootPart.Position - hrp.Position).Magnitude)
+                textLabel.Text = p.Name .. " [" .. dist .. "m]"
+                task.wait(0.2)
+            end
+        end)
     end
     
-    -- Theo dõi khi nhân vật xuất hiện hoặc hồi sinh (CharacterAdded)
     p.CharacterAdded:Connect(function(newChar)
-        if espPlayeractive then
+        if espPlayerActive then
             applyEsp(newChar)
         end
     end)
@@ -424,30 +408,31 @@ local function setupPlayerEsp(p)
     end
 end
 
--- Quét toàn bộ người chơi hiện tại và người mới vào
 for _, p in pairs(Players:GetPlayers()) do
     setupPlayerEsp(p)
 end
 Players.PlayerAdded:Connect(setupPlayerEsp)
 
--- Vòng lặp bật/tắt trạng thái ESP vĩnh viễn
+-- Bật/tắt trạng thái ESP toàn bộ người chơi liên tục kể cả khi hồi sinh
 RunService.RenderStepped:Connect(function()
     for _, p in pairs(Players:GetPlayers()) do
         if p ~= player and p.Character then
             local hrp = p.Character:FindFirstChild("HumanoidRootPart")
             if hrp then
-                local highlight = hrp:FindFirstChild("KienEspBox")
-                if espPlayeractive and not highlight then
+                local highlight = hrp:FindFirstChild("KienHighlight")
+                if espPlayerActive and not highlight then
                     setupPlayerEsp(p)
-                elseif not espPlayeractive and highlight then
+                elseif not espPlayerActive and highlight then
                     highlight:Destroy()
+                    local billboard = hrp:FindFirstChild("KienNameEsp")
+                    if billboard then billboard:Destroy() end
                 end
             end
         end
     end
 end)
 
--- Noclip & Fix Lag cơ bản
+-- Noclip & Fix Lag
 local NoclipBtn = createButton(tab2, "Noclip: TẮT", function() end)
 NoclipBtn.MouseButton1Click:Connect(function()
     noclipManual = not noclipManual
@@ -465,7 +450,7 @@ RunService.Stepped:Connect(function()
     end
 end)
 
-createButton(tab2, "Fix Lag Nâng Cao (Bật/Tắt)", function()
+createButton(tab2, "Fix Lag Nâng Cao (Bật/Tătă)", function()
     fixLagActive = not fixLagActive
     if fixLagActive then
         Lighting.GlobalShadows = false
