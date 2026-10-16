@@ -1,40 +1,61 @@
 -- ==========================================
--- SCRIPT: √12kientomato Hub Pro Max (Fixed Noclip & Smooth Fly)
+-- SCRIPT: √12kientomato Hub Pro Max (Ultimate Edition)
 -- ==========================================
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
-local TweenService = game:GetService("TweenService")
 local CoreGui = game:GetService("CoreGui")
 local Workspace = game:GetService("Workspace")
 local Lighting = game:GetService("Lighting")
 local ProximityPromptService = game:GetService("ProximityPromptService")
+local VirtualUser = game:GetService("VirtualUser")
 
 local player = Players.LocalPlayer
 local mouse = player:GetMouse()
+
 local character = player.Character or player.CharacterAdded:Wait()
 local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
-
-player.CharacterAdded:Connect(function(newChar)
-    character = newChar
-    humanoidRootPart = character:WaitForChild("HumanoidRootPart")
-end)
+local humanoid = character:WaitForChild("Humanoid")
 
 -- Biến trạng thái
 local base1 = nil
 local base2 = nil
-local isFlying = false
-local flySpeed = 165
+local isMoving = false
+local moveSpeed = 165
+local moveMode = "Fly" -- "Fly" hoặc "Walk"
 local fixLagActive = false
 local noclipManual = false
 local clickTpActive = false
 local espPlayerActive = false
 local autoPlatformActive = false
-local flyConnection = nil
+local antiAfkActive = false
+local moveConnection = nil
 
 local selectedPosition = nil
 local markerPart = nil
 local activePlatforms = {}
-local antiVoidPart = nil
+local smartFloorPart = nil
+
+local function setupCharacter(newChar)
+    character = newChar
+    humanoidRootPart = character:WaitForChild("HumanoidRootPart")
+    humanoid = character:WaitForChild("Humanoid")
+    
+    humanoid.Died:Connect(function()
+        isMoving = false
+        if moveConnection then moveConnection:Disconnect() end
+    end)
+end
+
+player.CharacterAdded:Connect(setupCharacter)
+
+-- Anti-AFK chống văng khi treo máy
+player.Idled:Connect(function()
+    if antiAfkActive then
+        VirtualUser:Button2Down(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
+        task.wait(1)
+        VirtualUser:Button2Up(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
+    end
+end)
 
 -- Nhặt đồ tức thì
 ProximityPromptService.PromptButtonHoldBegan:Connect(function(prompt)
@@ -72,7 +93,7 @@ MainFrame.Parent = ScreenGui
 MainFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
 MainFrame.BackgroundTransparency = 0.05
 MainFrame.Position = UDim2.new(0.2, 0, 0.2, 0)
-MainFrame.Size = UDim2.new(0, 360, 0, 330)
+MainFrame.Size = UDim2.new(0, 360, 0, 340)
 MainFrame.Active = true
 MainFrame.Draggable = true
 
@@ -124,7 +145,7 @@ local TabButtonContainer = Instance.new("Frame")
 TabButtonContainer.Parent = MainFrame
 TabButtonContainer.BackgroundTransparency = 1
 TabButtonContainer.Position = UDim2.new(0, 10, 0, 35)
-TabButtonContainer.Size = UDim2.new(0, 100, 0, 285)
+TabButtonContainer.Size = UDim2.new(0, 100, 0, 290)
 
 local UIListLayoutTabs = Instance.new("UIListLayout")
 UIListLayoutTabs.Parent = TabButtonContainer
@@ -135,7 +156,7 @@ local ContentContainer = Instance.new("Frame")
 ContentContainer.Parent = MainFrame
 ContentContainer.BackgroundTransparency = 1
 ContentContainer.Position = UDim2.new(0, 118, 0, 35)
-ContentContainer.Size = UDim2.new(0, 232, 0, 285)
+ContentContainer.Size = UDim2.new(0, 232, 0, 290)
 
 local tabs = {}
 local function createTab(name)
@@ -156,7 +177,7 @@ local function createTab(name)
     tabContent.Parent = ContentContainer
     tabContent.BackgroundTransparency = 1
     tabContent.Size = UDim2.new(1, 0, 1, 0)
-    tabContent.CanvasSize = UDim2.new(0, 0, 0, 400)
+    tabContent.CanvasSize = UDim2.new(0, 0, 0, 420)
     tabContent.ScrollBarThickness = 3
     tabContent.Visible = false
     
@@ -208,54 +229,53 @@ local function createButton(parent, text, callback)
     return btn
 end
 
--- ================= HÀM BAY SIÊU MƯỢT KHÔNG BỊ GIẬT NGƯỢC =================
-local function smoothFlyTo(targetCFrame)
-    if not humanoidRootPart or not targetCFrame then return false end
-    isFlying = true
+-- ================= HÀM DI CHUYỂN LINH HOẠT (BAY HOẶC GIẢ LẬP KÉO NÚT) =================
+local function customMoveTo(targetCFrame)
+    if not humanoidRootPart or not humanoid then return false end
+    isMoving = true
     
-    -- Tắt trọng lực nhân vật khi bay để không bị kéo sập xuống
-    local humanoid = character:FindFirstChildOfClass("Humanoid")
-    if humanoid then
-        humanoid.PlatformStand = true
-    end
-    
+    local targetPos = targetCFrame.Position
     local completed = false
-    if flyConnection then flyConnection:Disconnect() end
     
-    flyConnection = RunService.RenderStepped:Connect(function(dt)
-        if not isFlying or not humanoidRootPart then 
-            if flyConnection then flyConnection:Disconnect() end
+    if moveConnection then moveConnection:Disconnect() end
+    
+    moveConnection = RunService.RenderStepped:Connect(function(dt)
+        if not isMoving or not humanoidRootPart or not humanoid then 
+            if moveConnection then moveConnection:Disconnect() end
             return 
         end
         
         local currentPos = humanoidRootPart.Position
-        local targetPos = targetCFrame.Position
         local distance = (currentPos - targetPos).Magnitude
         
-        if distance < 2 or not isFlying then
-            humanoidRootPart.CFrame = targetCFrame
-            humanoidRootPart.AssemblyLinearVelocity = Vector3.zero
+        if distance < 3 or not isMoving then
+            if moveMode == "Walk" then humanoid:Move(Vector3.zero) end
             completed = true
-            isFlying = false
-            if humanoid then humanoid.PlatformStand = false end
-            if flyConnection then flyConnection:Disconnect() end
+            isMoving = false
+            if moveConnection then moveConnection:Disconnect() end
         else
-            -- Dịch chuyển tuyến tính mượt mà tuyệt đối, chống giật ngược
-            local speed = flySpeed
-            local step = math.min(speed * dt, distance)
-            local newPos = currentPos + (targetPos - currentPos).Unit * step
-            humanoidRootPart.CFrame = CFrame.new(newPos, targetPos)
-            humanoidRootPart.AssemblyLinearVelocity = Vector3.zero
+            if moveMode == "Fly" then
+                -- Chế độ bay mượt mà với tốc độ tùy chỉnh
+                local step = math.min(moveSpeed * dt, distance)
+                local newPos = currentPos + (targetPos - currentPos).Unit * step
+                humanoidRootPart.CFrame = CFrame.new(newPos, targetPos)
+                humanoidRootPart.AssemblyLinearVelocity = Vector3.zero
+            else
+                -- Chế độ giả lập kéo nút di chuyển thuần túy hướng về đích
+                local direction = (targetPos - currentPos)
+                local moveVector = Vector3.new(direction.X, 0, direction.Z).Unit
+                humanoid:Move(moveVector, false)
+            end
         end
     end)
     
-    while isFlying and not completed do
+    while isMoving and not completed do
         task.wait()
     end
     return true
 end
 
--- ================= TAB 1: TELE & BAY =================
+-- ================= TAB 1: TELE & HÀNH TRÌNH 2 -> 1 -> 2 =================
 createButton(tab1, "Lưu Vị Trí Base 1", function()
     if humanoidRootPart then
         base1 = humanoidRootPart.CFrame
@@ -270,42 +290,290 @@ createButton(tab1, "Lưu Vị Trí Base 2", function()
     end
 end)
 
-createButton(tab1, "Chạy Bay (2 -> 1 -> 2 Nghỉ)", function()
+createButton(tab1, "Chạy Hành Trình (2 -> 1 -> 2)", function()
     if not base1 or not base2 then
         print("Vui lòng lưu đủ 2 vị trí Base trước!")
         return
     end
     
-    if isFlying then return end
+    if isMoving then return end
     
     task.spawn(function()
-        noclipManual = true -- Tự động bật noclip khi bay cho mượt
-        if smoothFlyTo(base2) then
-            task.wait(0.1)
-            if smoothFlyTo(base1) then
-                task.wait(0.1)
-                smoothFlyTo(base2)
+        noclipManual = true
+        
+        print("Đang di chuyển đến Base 2...")
+        if customMoveTo(base2) then
+            task.wait(0.2)
+            print("Đang di chuyển sang Base 1...")
+            if customMoveTo(base1) then
+                task.wait(0.2)
+                print("Đang quay về lại Base 2...")
+                customMoveTo(base2)
             end
         end
-        isFlying = false
+        
+        isMoving = false
         noclipManual = false
-        print("Đã hoàn tất hành trình 2 -> 1 -> 2 và dừng bay!")
+        print("Đã hoàn tất hành trình 2 -> 1 -> 2 thành công!")
     end)
 end)
 
-createButton(tab1, "NGỪNG BAY NGAY LẬP TỨC", function()
-    isFlying = false
-    if flyConnection then flyConnection:Disconnect() end
-    local humanoid = character:FindFirstChildOfClass("Humanoid")
-    if humanoid then humanoid.PlatformStand = false end
-    if humanoidRootPart then
-        humanoidRootPart.AssemblyLinearVelocity = Vector3.zero
-    end
-    print("Đã dừng bay ngay lập tức!")
+createButton(tab1, "NGỪNG HÀNH TRÌNH NGAY", function()
+    isMoving = false
+    if moveConnection then moveConnection:Disconnect() end
+    if humanoid then humanoid:Move(Vector3.zero) end
+    if humanoidRootPart then humanoidRootPart.AssemblyLinearVelocity = Vector3.zero end
+    print("Đã dừng hành trình!")
 end)
 
 -- ================= TAB 2: TÍNH NĂNG =================
 local ClickTpBtn = createButton(tab2, "Chọn Điểm: TẮT", function() end)
+
+ClickTpBtn.MouseButton1Click:Connect(function()
+    clickTpActive = not clickTpActive
+    ClickTpBtn.Text = clickTpActive and "Chọn Điểm: BẬT" or "Chọn Điểm: TẮT"
+    ClickTpBtn.TextColor3 = clickTpActive and Color3.fromRGB(0, 255, 150) or Color3.fromRGB(255, 255, 255)
+    if not clickTpActive then
+        selectedPosition = nil
+        if markerPart then markerPart:Destroy() end
+    end
+end)
+
+mouse.Button1Down:Connect(function()
+    if not clickTpActive then return end
+    local target = mouse.Target
+    local hitPos = mouse.Hit
+    
+    if target and target:IsA("BasePart") and hitPos then
+        selectedPosition = hitPos + Vector3.new(0, 3, 0)
+        if markerPart then markerPart:Destroy() end
+        markerPart = Instance.new("Part")
+        markerPart.Size = Vector3.new(2, 2, 2)
+        markerPart.Shape = Enum.PartType.Ball
+        markerPart.Color = Color3.fromRGB(0, 255, 255)
+        markerPart.Material = Enum.Material.Neon
+        markerPart.Transparency = 0.3
+        markerPart.Anchored = true
+        markerPart.CanCollide = false
+        markerPart.CFrame = selectedPosition
+        markerPart.Parent = Workspace
+    end
+end)
+
+createButton(tab2, "✅ NÚT OK (DI CHUYỂN TỚI ĐIỂM)", function()
+    if not selectedPosition or not humanoidRootPart then return end
+    if markerPart then markerPart:Destroy() end
+    
+    task.spawn(function()
+        noclipManual = true
+        customMoveTo(selectedPosition)
+        noclipManual = false
+    end)
+end)
+
+local AutoPlatformBtn = createButton(tab2, "Khối Theo Chân: TẮT", function() end)
+
+AutoPlatformBtn.MouseButton1Click:Connect(function()
+    autoPlatformActive = not autoPlatformActive
+    AutoPlatformBtn.Text = autoPlatformActive and "Khối Theo Chân: BẬT" or "Khối Theo Chân: TẮT"
+    AutoPlatformBtn.TextColor3 = autoPlatformActive and Color3.fromRGB(0, 255, 150) or Color3.fromRGB(255, 255, 255)
+    if not autoPlatformActive then
+        for _, p in pairs(activePlatforms) do if p then p:Destroy() end end
+        activePlatforms = {}
+    end
+end)
+
+RunService.Heartbeat:Connect(function()
+    if autoPlatformActive and humanoidRootPart then
+        local pos = humanoidRootPart.Position - Vector3.new(0, 3.5, 0)
+        local createNew = true
+        for _, p in pairs(activePlatforms) do
+            if p and (p.Position - pos).Magnitude < 2 then
+                createNew = false
+                break
+            end
+        end
+        
+        if createNew then
+            local plat = Instance.new("Part")
+            plat.Size = Vector3.new(4, 1, 4)
+            plat.Position = pos
+            plat.Anchored = true
+            plat.CanCollide = true
+            plat.Transparency = 1
+            plat.Parent = Workspace
+            table.insert(activePlatforms, plat)
+            if #activePlatforms > 30 then
+                local oldPlat = table.remove(activePlatforms, 1)
+                if oldPlat then oldPlat:Destroy() end
+            end
+        end
+    end
+end)
+
+local EspBtn = createButton(tab2, "ESP Tên & Khoảng Cách: TẮT", function() end)
+
+EspBtn.MouseButton1Click:Connect(function()
+    espPlayerActive = not espPlayerActive
+    EspBtn.Text = espPlayerActive and "ESP Tên & Khoảng Cách: BẬT" or "ESP Tên & Khoảng Cách: TẮT"
+    EspBtn.TextColor3 = espPlayerActive and Color3.fromRGB(0, 255, 150) or Color3.fromRGB(255, 255, 255)
+end)
+
+local function setupPlayerEsp(p)
+    if p == player then return end
+    local function applyEsp(char)
+        if not char then return end
+        local hrp = char:WaitForChild("HumanoidRootPart", 5)
+        local head = char:WaitForChild("Head", 5)
+        if not hrp or not head then return end
+        if hrp:FindFirstChild("KienHighlight") then return end
+        
+        local highlight = Instance.new("Highlight")
+        highlight.Name = "KienHighlight"
+        highlight.Adornee = char
+        highlight.FillColor = Color3.fromRGB(255, 0, 0)
+        highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+        highlight.FillTransparency = 0.5
+        highlight.OutlineTransparency = 0
+        highlight.Parent = hrp
+        
+        local billboard = Instance.new("BillboardGui")
+        billboard.Name = "KienNameEsp"
+        billboard.Size = UDim2.new(0, 200, 0, 50)
+        billboard.StudsOffset = Vector3.new(0, 2.5, 0)
+        billboard.AlwaysOnTop = true
+        billboard.Adornee = head
+        billboard.Parent = hrp
+        
+        local textLabel = Instance.new("TextLabel")
+        textLabel.Size = UDim2.new(1, 0, 1, 0)
+        textLabel.BackgroundTransparency = 1
+        textLabel.Font = Enum.Font.SourceSansBold
+        textLabel.TextSize = 14
+        textLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+        textLabel.TextStrokeTransparency = 0
+        textLabel.Parent = billboard
+        
+        task.spawn(function()
+            while billboard and billboard.Parent and humanoidRootPart and hrp do
+                local dist = math.floor((humanoidRootPart.Position - hrp.Position).Magnitude)
+                textLabel.Text = p.Name .. " [" .. dist .. "m]"
+                task.wait(0.2)
+            end
+        end)
+    end
+    p.CharacterAdded:Connect(function(newChar)
+        if espPlayerActive then applyEsp(newChar) end
+    end)
+    if p.Character then applyEsp(p.Character) end
+end
+
+for _, p in pairs(Players:GetPlayers()) do setupPlayerEsp(p) end
+Players.PlayerAdded:Connect(setupPlayerEsp)
+
+RunService.RenderStepped:Connect(function()
+    for _, p in pairs(Players:GetPlayers()) do
+        if p ~= player and p.Character then
+            local hrp = p.Character:FindFirstChild("HumanoidRootPart")
+            if hrp then
+                local highlight = hrp:FindFirstChild("KienHighlight")
+                if espPlayerActive and not highlight then
+                    setupPlayerEsp(p)
+                elseif not espPlayerActive and highlight then
+                    highlight:Destroy()
+                    local billboard = hrp:FindFirstChild("KienNameEsp")
+                    if billboard then billboard:Destroy() end
+                end
+            end
+        end
+    end
+end)
+
+-- ================= TAB 3: CÀI ĐẶT =================
+
+-- Nút đổi chế độ di chuyển (Bay / Giả lập kéo nút)
+local ModeBtn = createButton(tab3, "Kiểu Di Chuyển: BAY (Fly)", function() end)
+ModeBtn.MouseButton1Click:Connect(function()
+    if moveMode == "Fly" then
+        moveMode = "Walk"
+        ModeBtn.Text = "Kiểu Di Chuyển: KÉO NÚT (Walk)"
+        ModeBtn.TextColor3 = Color3.fromRGB(0, 255, 150)
+    else
+        moveMode = "Fly"
+        ModeBtn.Text = "Kiểu Di Chuyển: BAY (Fly)"
+        ModeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    end
+end)
+
+-- Ô nhập tốc độ
+local SpeedTitle = Instance.new("TextLabel")
+SpeedTitle.Parent = tab3
+SpeedTitle.BackgroundTransparency = 1
+SpeedTitle.Size = UDim2.new(1, -5, 0, 20)
+SpeedTitle.Font = Enum.Font.SourceSansBold
+SpeedTitle.Text = "Tốc độ (Max: 165):"
+SpeedTitle.TextColor3 = Color3.fromRGB(200, 200, 200)
+SpeedTitle.TextSize = 12
+SpeedTitle.TextXAlignment = Enum.TextXAlignment.Left
+
+local SpeedBox = Instance.new("TextBox")
+SpeedBox.Parent = tab3
+SpeedBox.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+SpeedBox.Size = UDim2.new(1, -5, 0, 28)
+SpeedBox.Font = Enum.Font.SourceSansBold
+SpeedBox.Text = tostring(moveSpeed)
+SpeedBox.TextColor3 = Color3.fromRGB(0, 255, 255)
+SpeedBox.TextSize = 14
+SpeedBox.ClearTextOnFocus = false
+
+local cornerBox = Instance.new("UICorner")
+cornerBox.CornerRadius = UDim.new(0, 5)
+cornerBox.Parent = SpeedBox
+
+SpeedBox.FocusLost:Connect(function()
+    local val = tonumber(SpeedBox.Text)
+    if val then
+        if val > 165 then val = 165 end
+        if val < 1 then val = 1 end
+        moveSpeed = val
+        SpeedBox.Text = tostring(moveSpeed)
+    else
+        SpeedBox.Text = tostring(moveSpeed)
+    end
+end)
+
+-- Noclip Bất Tử kết hợp Chống Rơi Thông Minh (Smart Anti-Fall)
+local NoclipBtn = createButton(tab3, "Noclip & Chống Rơi: TẮT", function() end)
+
+NoclipBtn.MouseButton1Click:Connect(function()
+    noclipManual = not noclipManual
+    NoclipBtn.Text = noclipManual and "Noclip & Chống Rơi: BẬT" or "Noclip & Chống Rơi: TẮT"
+    NoclipBtn.TextColor3 = noclipManual and Color3.fromRGB(0, 255, 150) or Color3.fromRGB(255, 255, 255)
+    
+    if not noclipManual and smartFloorPart then
+        smartFloorPart:Destroy()
+        smartFloorPart = nil
+    end
+end)
+
+-- Vòng lặp Noclip và tự động tạo khối đỡ dưới chân khi không có khối
+RunService.Heartbeat:Connect(function()
+    if (isMoving or noclipManual) and character and humanoidRootPart then
+        for _, part in pairs(character:GetDescendants()) do
+            if part:IsA("BasePart") then
+                part.CanCollide = false
+            end
+        end
+        
+        -- Tính năng chống rơi: Quét xem dưới chân có khối thực sự không, nếu không có tạo sàn tàng hình đỡ ngay
+        if noclipManual then
+            local rayOrigin = humanoidRootPart.Position
+            local rayDirection = Vector3.new(0, -15, 0)
+            local raycastParams = RaycastParams.new()
+            raycastParams.FilterType = RaycastFilterType.Exclude
+            raycastParams.FilterDescendantsInstances = {character}
+            
+            local raycastResult = workspace:Raycast(rayOrigin, rayDirection, raycastPateButton(tab2, "Chọn Điểm: TẮT", function() end)
 
 ClickTpBtn.MouseButton1Click:Connect(function()
     clickTpActive = not clickTpActive
